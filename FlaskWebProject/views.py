@@ -77,25 +77,37 @@ def login():
     auth_url = _build_auth_url(scopes=Config.SCOPE, state=session["state"])
     return render_template('login.html', title='Sign In', form=form, auth_url=auth_url)
 
-@app.route(Config.REDIRECT_PATH)  # Its absolute URL must match your app's redirect_uri set in AAD
+@app.route(Config.REDIRECT_PATH)  # This should be /getAToken
 def authorized():
-    if request.args.get('state') != session.get("state"):
-        return redirect(url_for("home"))  # No-OP. Goes back to Index page
-    if "error" in request.args:  # Authentication/Authorization failure
+    # Check state to prevent CSRF
+    if request.args.get("state") != session.get("state"):
+        return redirect(url_for("home"))
+
+    # Handle authentication/authorization errors
+    if "error" in request.args:
         return render_template("auth_error.html", result=request.args)
-    if request.args.get('code'):
+
+    # If we have an authorization code from MS
+    if "code" in request.args:
         cache = _load_cache()
-        # TODO: Acquire a token from a built msal app, along with the appropriate redirect URI
-        result = None
-        if "error" in result:
+        result = _build_msal_app(cache=cache).acquire_token_by_authorization_code(
+            request.args['code'],
+            scopes=Config.SCOPE,
+            redirect_uri=url_for("authorized", _external=True)
+        )
+
+        # Check if token was successfully acquired
+        if "id_token_claims" in result:
+            session["user"] = result["id_token_claims"]
+            # Here, we log in the admin user; you can customize for dynamic users
+            user = User.query.filter_by(username="admin").first()
+            login_user(user)
+            _save_cache(cache)
+        else:
             return render_template("auth_error.html", result=result)
-        session["user"] = result.get("id_token_claims")
-        # Note: In a real app, we'd use the 'name' property from session["user"] below
-        # Here, we'll use the admin username for anyone who is authenticated by MS
-        user = User.query.filter_by(username="admin").first()
-        login_user(user)
-        _save_cache(cache)
-    return redirect(url_for('home'))
+
+    return redirect(url_for("home"))
+
 
 @app.route('/logout')
 def logout():
