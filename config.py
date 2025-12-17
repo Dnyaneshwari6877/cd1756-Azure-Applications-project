@@ -39,3 +39,7 @@ class Config(object):
     SCOPE = ["User.Read"] # Only need to read user profile for this app
 
     SESSION_TYPE = "filesystem"  # Token cache will be stored in server-side session
+
+    # Ensure Flask generates HTTPS URLs when using url_for(..., _external=True)
+    PREFERRED_URL_SCHEME = 'https'
+
