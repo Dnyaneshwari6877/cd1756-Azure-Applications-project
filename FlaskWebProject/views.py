@@ -83,7 +83,7 @@ def login():
 def authorized():
     # Check state to prevent CSRF
     if request.args.get("state") != session.get("state"):
-         current_app.logger.warning("LOGIN FAILED: State mismatch (possible CSRF)")
+        current_app.logger.warning("LOGIN FAILED: State mismatch (possible CSRF)")
         return redirect(url_for("home"))
 
     # Handle authentication/authorization errors
