@@ -10,6 +10,12 @@ from flask_session import Session
 
 from werkzeug.middleware.proxy_fix import ProxyFix
 
+import logging
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(levelname)s - %(message)s"
+)
 
 
 app = Flask(__name__)
