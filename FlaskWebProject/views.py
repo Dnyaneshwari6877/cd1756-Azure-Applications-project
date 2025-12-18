@@ -12,6 +12,8 @@ from flask_login import current_user, login_user, logout_user, login_required
 from FlaskWebProject.models import User, Post
 import msal
 import uuid
+from flask import current_app
+
 
 imageSourceUrl = 'https://'+ app.config['BLOB_ACCOUNT']  + '.blob.core.windows.net/' + app.config['BLOB_CONTAINER']  + '/'
 
@@ -81,10 +83,14 @@ def login():
 def authorized():
     # Check state to prevent CSRF
     if request.args.get("state") != session.get("state"):
+         current_app.logger.warning("LOGIN FAILED: State mismatch (possible CSRF)")
         return redirect(url_for("home"))
 
     # Handle authentication/authorization errors
     if "error" in request.args:
+        current_app.logger.error(
+            f"LOGIN FAILED: Azure AD error - {request.args.get('error_description')}"
+        )
         return render_template("auth_error.html", result=request.args)
 
     # If we have an authorization code from MS
@@ -102,8 +108,14 @@ def authorized():
             # Here, we log in the admin user; you can customize for dynamic users
             user = User.query.filter_by(username="admin").first()
             login_user(user)
+            current_app.logger.info(
+                f"LOGIN SUCCESS: Microsoft user {result['id_token_claims'].get('preferred_username')}"
+            )
             _save_cache(cache)
         else:
+            current_app.logger.error(
+                f"LOGIN FAILED: Token acquisition failed - {result}"
+            )
             return render_template("auth_error.html", result=result)
 
     return redirect(url_for("home"))
